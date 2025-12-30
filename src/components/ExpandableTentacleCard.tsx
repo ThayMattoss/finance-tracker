@@ -16,10 +16,14 @@ export function ExpandableTentacleCard({ tentacle, portfolioType }: ExpandableTe
     const [editingHolding, setEditingHolding] = useState<AssetHolding | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
+    const tentacleInvestedValue = tentacle.holdings.reduce((sum, h) => sum + (h.quantity * h.averagePrice), 0);
     const tentacleMarketValue = tentacle.holdings.reduce((sum, h) => {
         const price = prices[h.ticker] || h.averagePrice;
         return sum + (h.quantity * price);
     }, 0);
+
+    const isCaixa = tentacle.id === 'CAIXA';
+    const tentacleValuation = (isCaixa || tentacleInvestedValue === 0) ? 0 : ((tentacleMarketValue / tentacleInvestedValue) - 1) * 100;
 
     return (
         <div
@@ -67,14 +71,32 @@ export function ExpandableTentacleCard({ tentacle, portfolioType }: ExpandableTe
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>Investido</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                            {formatCurrency(tentacleInvestedValue)}
+                        </div>
+                    </div>
                     <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>Valor Atual</div>
                         <div style={{ fontSize: '1.25rem', fontWeight: 700, color: tentacle.color }}>
                             {formatCurrency(tentacleMarketValue)}
                         </div>
                     </div>
-                    {isExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+                    <div style={{ textAlign: 'right', minWidth: '80px' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>Valorização</div>
+                        <div style={{
+                            fontSize: '1.1rem',
+                            fontWeight: 700,
+                            color: isCaixa ? 'var(--color-text-secondary)' : (tentacleValuation > 0 ? 'var(--color-success)' : (tentacleValuation < 0 ? 'var(--color-error)' : 'var(--color-text-secondary)'))
+                        }}>
+                            {isCaixa ? '-' : (tentacleValuation > 0 ? '+' : '') + tentacleValuation.toFixed(2) + '%'}
+                        </div>
+                    </div>
+                    <div style={{ color: 'var(--color-text-tertiary)', marginLeft: '0.5rem' }}>
+                        {isExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+                    </div>
                 </div>
             </button>
 
@@ -101,10 +123,11 @@ export function ExpandableTentacleCard({ tentacle, portfolioType }: ExpandableTe
                                     {tentacle.holdings.map((holding) => {
                                         const currentPrice = prices[holding.ticker] || 0;
                                         const currentTotal = holding.quantity * currentPrice;
-                                        const appreciation = currentPrice > 0
-                                            ? ((currentPrice - holding.averagePrice) / holding.averagePrice) * 100
-                                            : 0;
-                                        const appreciationColor = appreciation >= 0 ? 'var(--color-success)' : 'var(--color-error)';
+                                        const isCaixa = tentacle.id === 'CAIXA';
+                                        const appreciation = (isCaixa || currentPrice === 0)
+                                            ? 0
+                                            : ((currentPrice - holding.averagePrice) / holding.averagePrice) * 100;
+                                        const appreciationColor = appreciation > 0 ? 'var(--color-success)' : (appreciation < 0 ? 'var(--color-error)' : 'var(--color-text-secondary)');
 
                                         return (
                                             <tr key={holding.ticker} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
@@ -116,7 +139,7 @@ export function ExpandableTentacleCard({ tentacle, portfolioType }: ExpandableTe
                                                     {currentPrice > 0 ? formatCurrency(currentPrice) : '-'}
                                                 </td>
                                                 <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600, color: appreciationColor }}>
-                                                    {currentPrice > 0 ? `${appreciation > 0 ? '+' : ''}${appreciation.toFixed(2)}%` : '-'}
+                                                    {isCaixa ? '-' : (currentPrice > 0 ? `${appreciation > 0 ? '+' : ''}${appreciation.toFixed(2)}%` : '-')}
                                                 </td>
                                                 <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--color-text-secondary)' }}>
                                                     {formatCurrency(holding.totalValue)}
@@ -149,7 +172,7 @@ export function ExpandableTentacleCard({ tentacle, portfolioType }: ExpandableTe
                                                             }}
                                                             style={{
                                                                 padding: '0.25rem',
-                                                                color: 'var(--color-danger)',
+                                                                color: 'var(--color-error)',
                                                                 cursor: 'pointer',
                                                                 transition: 'var(--transition-fast)'
                                                             }}

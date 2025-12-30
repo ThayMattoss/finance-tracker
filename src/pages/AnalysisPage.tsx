@@ -222,16 +222,32 @@ export function AnalysisPage() {
                     </div>
 
                     <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '0.25rem' }}>
-                            Aporte Sugerido (Simulator)
-                        </div>
-                        <div style={{
-                            fontSize: '1.25rem',
-                            fontWeight: 700,
-                            color: (investmentPlan.availableForProportional < 0) ? 'var(--color-error)' : 'var(--color-success)'
-                        }}>
-                            {formatCurrency(investmentPlan.availableForProportional)}
-                        </div>
+                        {investmentPlan.availableForProportional <= 0 ? (
+                            <>
+                                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-error)', lineHeight: 1.2 }}>
+                                    Sem reserva para novos aportes (Simulator)
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.4rem' }}>
+                                    Sem reservas para compras que não são faltantes.
+                                </div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-tertiary)', marginTop: '0.2rem' }}>
+                                    {formatCurrency(investmentPlan.availableForProportional)}
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '0.25rem' }}>
+                                    Aporte Sugerido (Simulator)
+                                </div>
+                                <div style={{
+                                    fontSize: '1.25rem',
+                                    fontWeight: 700,
+                                    color: 'var(--color-success)'
+                                }}>
+                                    {formatCurrency(investmentPlan.availableForProportional)}
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div style={{ textAlign: 'center' }}>

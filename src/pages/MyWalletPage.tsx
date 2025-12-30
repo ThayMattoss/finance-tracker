@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
 import { usePortfolio } from '../context/PortfolioContext';
-import { MacroTable } from '../components/MacroTable';
 import { ExpandableTentacleCard } from '../components/ExpandableTentacleCard';
 import { AddPurchaseModal } from '../components/AddPurchaseModal';
 import { formatCurrency } from '../utils/calculations';
@@ -101,15 +100,6 @@ export function MyWalletPage() {
                 </div>
             </header>
 
-            {/* Macro Table */}
-            <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>
-                    Visão Macro dos Tentáculos
-                </h2>
-                <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                    <MacroTable portfolio={portfolio} />
-                </div>
-            </section>
 
             {/* Tentacle Cards */}
             <section>
