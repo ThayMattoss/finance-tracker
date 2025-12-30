@@ -10,7 +10,7 @@ body {
     font-family: var(--font-family);
     background-color: var(--color-background);
     color: var(--color-text-primary);
-    line-height: 1.6;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     min-height: 100vh;
 }
@@ -25,15 +25,17 @@ button {
     border: none;
     background: none;
     font-family: inherit;
+    transition: var(--transition-fast);
 }
 
 /* Utilities */
 .glass-panel {
     background: var(--glass-bg);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
     border: var(--glass-border);
     box-shadow: var(--glass-shadow);
     border-radius: var(--radius-md);
+    transition: var(--transition-normal);
 }
 
 .flex-center {
@@ -47,4 +49,5 @@ button {
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+    font-weight: 700;
 }

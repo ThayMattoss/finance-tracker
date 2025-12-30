@@ -1,5 +1,5 @@
-import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, GraduationCap, Wallet, Calculator, BookOpen, Settings } from 'lucide-react';
+import { Outlet, NavLink, Link } from 'react-router-dom';
+import { LayoutDashboard, GraduationCap, Wallet, BookOpen, Settings } from 'lucide-react';
 
 export function Layout() {
     return (
@@ -19,15 +19,16 @@ export function Layout() {
                     borderRadius: 'var(--radius-lg)'
                 }}
             >
-                <div style={{ marginBottom: '3rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ width: '32px', height: '32px', background: 'var(--color-primary)', borderRadius: '8px' }}></div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>InvTracker</h2>
+                <div style={{ marginBottom: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Link to="/" style={{ display: 'block', maxWidth: '100%' }}>
+                        <img src="/src/assets/logo.png" alt="Dividends for Freedom" style={{ maxWidth: '100%', height: 'auto', maxHeight: '120px' }} />
+                    </Link>
                 </div>
 
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
                     <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" />
-                    <NavItem to="/professor" icon={<GraduationCap size={20} />} label="Carteira Professor" />
                     <NavItem to="/kraken" icon={<BookOpen size={20} />} label="Análise de Carteiras" />
+                    <NavItem to="/professor" icon={<GraduationCap size={20} />} label="Carteira Professor" />
                     <NavItem to="/wallet" icon={<Wallet size={20} />} label="Minha Carteira" />
                     <NavItem to="/settings" icon={<Settings size={20} />} label="Configurações" />
                 </nav>

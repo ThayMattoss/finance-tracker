@@ -5,6 +5,7 @@ interface SettingsContextType {
     settings: Record<string, AssetSettings>;
     getSetting: (ticker: string) => AssetSettings | undefined;
     updateSetting: (ticker: string, changes: Partial<AssetSettings>) => void;
+    restoreSettings: (allSettings: Record<string, AssetSettings>) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -54,8 +55,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         });
     };
 
+    const restoreSettings = (allSettings: Record<string, AssetSettings>) => {
+        setSettings(allSettings);
+    };
+
     return (
-        <SettingsContext.Provider value={{ settings, getSetting, updateSetting }}>
+        <SettingsContext.Provider value={{ settings, getSetting, updateSetting, restoreSettings }}>
             {children}
         </SettingsContext.Provider>
     );

@@ -18,6 +18,7 @@ interface PortfolioContextType {
     updateHolding: (holding: Omit<AssetHolding, 'totalValue' | 'lastUpdated'>, target?: PortfolioType) => void;
     deleteHolding: (category: AssetCategory, ticker: string, target?: PortfolioType) => void;
     resetPortfolio: (target?: PortfolioType) => void;
+    importData: (professor: Portfolio, user: Portfolio) => void;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -157,7 +158,18 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         setPortfolioByType(target, () => INITIAL_PORTFOLIO);
     };
 
-    const [prices, setPrices] = useState<Record<string, number>>({});
+    const importData = (professor: Portfolio, user: Portfolio) => {
+        setProfessorPortfolio(professor);
+        setUserPortfolio(user);
+    };
+
+    const [prices, setPrices] = useState<Record<string, number>>({
+        // Professor Reference Prices to match 30/12/2025 report
+        'PROF_FII_01': 413.513, 'PROF_FII_02': 413.513, 'PROF_FII_03': 413.513, 'PROF_FII_04': 413.513, 'PROF_FII_05': 413.513,
+        'PROF_FII_06': 413.513, 'PROF_FII_07': 413.513, 'PROF_FII_08': 413.513, 'PROF_FII_09': 413.513, 'PROF_FII_10': 413.513,
+        'PROF_ACAO_01': 387.284, 'PROF_ACAO_02': 387.284, 'PROF_ACAO_03': 387.284, 'PROF_ACAO_04': 387.284, 'PROF_ACAO_05': 387.284,
+        'SPXB11': 750.60
+    });
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const refreshPrices = async () => {
@@ -202,7 +214,8 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
             addOrUpdateHolding,
             updateHolding,
             deleteHolding,
-            resetPortfolio
+            resetPortfolio,
+            importData
         }}>
             {children}
         </PortfolioContext.Provider>
