@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 import type { Portfolio, AssetHolding, AssetCategory } from '../types';
 import { INITIAL_PORTFOLIO, KRAKEN_TENTACLES } from '../data/professor';
-import { loadPortfolio, savePortfolio, STORAGE_KEYS } from '../utils/storage';
+import { INITIAL_USER_PORTFOLIO } from '../data/user';
+import { loadPortfolio, savePortfolio, loadPrices, savePrices, STORAGE_KEYS } from '../utils/storage';
 import { calculateWeightedAverage, calculateTotalValue } from '../utils/calculations';
 import { fetchPrices } from '../services/priceService';
 
@@ -13,6 +16,7 @@ interface PortfolioContextType {
     userPortfolio: Portfolio;
     prices: Record<string, number>;
     isRefreshing: boolean;
+    loading: boolean;
     refreshPrices: () => Promise<void>;
     addOrUpdateHolding: (holding: Omit<AssetHolding, 'totalValue' | 'lastUpdated'>, target?: PortfolioType) => void;
     updateHolding: (holding: Omit<AssetHolding, 'totalValue' | 'lastUpdated'>, target?: PortfolioType) => void;
@@ -24,6 +28,8 @@ interface PortfolioContextType {
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
 export function PortfolioProvider({ children }: { children: React.ReactNode }) {
+    const { user } = useAuth();
+
     // Helper to merge saved data with current structure
     const mergeWithStructure = (loaded: Portfolio) => {
         const mergedTentacles = KRAKEN_TENTACLES.map(templateTentacle => {
@@ -37,20 +43,73 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Professor Portfolio State
-    const [professorPortfolio, setProfessorPortfolio] = useState<Portfolio>(() => {
-        const loaded = loadPortfolio(STORAGE_KEYS.PROFESSOR);
-        if (loaded) return mergeWithStructure(loaded);
-        return INITIAL_PORTFOLIO;
-    });
+    const [professorPortfolio, setProfessorPortfolio] = useState<Portfolio>(INITIAL_PORTFOLIO);
 
     // User Portfolio State
-    const [userPortfolio, setUserPortfolio] = useState<Portfolio>(() => {
-        const loaded = loadPortfolio(STORAGE_KEYS.USER);
-        if (loaded) return mergeWithStructure(loaded);
-        return INITIAL_PORTFOLIO;
-    });
+    const [userPortfolio, setUserPortfolio] = useState<Portfolio>(INITIAL_USER_PORTFOLIO);
 
-    // Persist changes
+    const [loading, setLoading] = useState(true);
+
+    // Load data from Supabase on Login
+    useEffect(() => {
+        if (!user) {
+            setLoading(false);
+            return;
+        }
+
+        const loadCloudData = async () => {
+            setLoading(true);
+            const { data } = await supabase
+                .from('user_data')
+                .select('portfolio_data')
+                .eq('user_id', user.id)
+                .single();
+
+            if (data && data.portfolio_data) {
+                if (data.portfolio_data.professor) {
+                    setProfessorPortfolio(mergeWithStructure(data.portfolio_data.professor));
+                }
+                if (data.portfolio_data.user) {
+                    setUserPortfolio(mergeWithStructure(data.portfolio_data.user));
+                }
+            } else {
+                // If no cloud data, try local storage (migration scenario)
+                const localProf = loadPortfolio(STORAGE_KEYS.PROFESSOR);
+                const localUser = loadPortfolio(STORAGE_KEYS.USER);
+
+                if (localProf) setProfessorPortfolio(mergeWithStructure(localProf));
+                if (localUser) setUserPortfolio(mergeWithStructure(localUser));
+            }
+            setLoading(false);
+        };
+
+        loadCloudData();
+    }, [user]);
+
+    // Persist changes to Cloud (Debounced)
+    useEffect(() => {
+        if (!user) return;
+
+        const saveData = async () => {
+            try {
+                await supabase.from('user_data').upsert({
+                    user_id: user.id,
+                    portfolio_data: {
+                        professor: professorPortfolio,
+                        user: userPortfolio
+                    },
+                    updated_at: new Date().toISOString()
+                });
+            } catch (err) {
+                console.error('Error saving to cloud:', err);
+            }
+        };
+
+        const timeoutId = setTimeout(saveData, 2000); // 2 second debounce
+        return () => clearTimeout(timeoutId);
+    }, [professorPortfolio, userPortfolio, user]);
+
+    // Keep LocalStorage as backup/cache
     useEffect(() => {
         savePortfolio(professorPortfolio, STORAGE_KEYS.PROFESSOR);
     }, [professorPortfolio]);
@@ -112,6 +171,9 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 
             return { ...prev, tentacles, totalValue, lastUpdated: new Date().toISOString() };
         });
+        // Specific ticker refresh optimization could be added here, 
+        // but for now we rely on the periodic update or manual user refresh 
+        // to avoid race conditions with state updates.
     };
 
     const updateHolding = (updatedHolding: Omit<AssetHolding, 'totalValue' | 'lastUpdated'>, target: PortfolioType = 'professor') => {
@@ -161,6 +223,8 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     const importData = (professor: Portfolio, user: Portfolio) => {
         setProfessorPortfolio(professor);
         setUserPortfolio(user);
+        // Trigger price refresh after import
+        setTimeout(() => refreshPrices(), 100);
     };
 
     const [prices, setPrices] = useState<Record<string, number>>({
@@ -181,7 +245,10 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         [professorPortfolio, userPortfolio].forEach(p => {
             p.tentacles.forEach(t => {
                 t.holdings.forEach(h => {
-                    if (h.ticker) tickers.add(h.ticker);
+                    // Filter out internal/dummy tickers and empty ones
+                    if (h.ticker && !h.ticker.startsWith('PROF_') && h.ticker !== 'INTER') {
+                        tickers.add(h.ticker);
+                    }
                 });
             });
         });
@@ -191,17 +258,27 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        console.log('Fetching prices for:', Array.from(tickers));
-        const newPrices = await fetchPrices(Array.from(tickers));
-        setPrices(prev => ({ ...prev, ...newPrices }));
-        setIsRefreshing(false);
+        try {
+            // console.log('Fetching prices for:', Array.from(tickers));
+            const newPrices = await fetchPrices(Array.from(tickers));
+
+            setPrices(prev => {
+                const updated = { ...prev, ...newPrices };
+                savePrices(updated); // Save to cache
+                return updated;
+            });
+        } catch (error) {
+            console.error('Failed to update prices:', error);
+        } finally {
+            setIsRefreshing(false);
+        }
     };
 
     useEffect(() => {
         refreshPrices();
         const interval = setInterval(refreshPrices, 5 * 60 * 1000);
         return () => clearInterval(interval);
-    }, [professorPortfolio.tentacles, userPortfolio.tentacles]);
+    }, []); // Fixed: Removed unstable dependencies to prevent infinite loops
 
     return (
         <PortfolioContext.Provider value={{
@@ -210,6 +287,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
             userPortfolio,
             prices,
             isRefreshing,
+            loading, // Expose loading state
             refreshPrices,
             addOrUpdateHolding,
             updateHolding,
